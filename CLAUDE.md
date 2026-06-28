@@ -4,87 +4,95 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Static HTML/CSS portfolio website deployed to AWS using S3 + CloudFront, provisioned with Terraform, and automated via GitHub Actions.
+**DMI Portfolio Website** — A static HTML/CSS portfolio site used in the **DevOps Micro Internship (DMI)** Week 1 curriculum. Students deploy this on an Ubuntu VM with Nginx to practice Linux fundamentals, web server configuration, and production-style deployments.
 
-## Architecture
+This is an educational artifact, not a production application. It serves as a hands-on learning tool for DevOps basics.
 
-### Application (Static Site)
-- **index.html** — Single-page portfolio (About, Services, Courses, Books, Community, Contact)
-- **style.css** — All styling (~1145 lines), mobile-first responsive (breakpoints: 900px, 768px, 600px)
-- **privacy.html / terms.html** — Standalone pages with inline styles
-- **images/** — Static assets (logo, profile, course thumbnails, hero background)
-- Pure HTML5 + CSS3, no JavaScript, no build step
+Will be deployed  to AWS using s3 and cloudfront , provisioned with terraform.
 
-### Infrastructure (`terraform/`)
-- AWS S3 bucket for static site hosting (private, OAC-based access)
-- CloudFront distribution as CDN with S3 origin
-- GitHub OIDC provider + IAM role for keyless CI/CD auth
-- Terraform state stored in S3 backend with DynamoDB locking
-- All resources tagged with `Project` and `Environment`
-
-### CI/CD (`.github/workflows/`)
-- GitHub Actions workflow triggers on push to `main`
-- Syncs site files to S3, then invalidates CloudFront cache
-- Uses OIDC for AWS authentication (no long-lived keys)
-
-## MCP Servers (`.mcp.json`)
-
-Two MCP servers are configured for Claude Code:
-- **aws** (`awslabs.aws-api-mcp-server`) — Direct AWS API access for querying and managing resources
-- **terraform** (`hashicorp/terraform-mcp-server`) — Terraform operations via Docker, workspace mounted at `/workspace`
-
-AWS credentials and region are configured in `.claude/settings.local.json` (gitignored), not in `.mcp.json`. This keeps secrets out of version control and provides a single source of truth for all tools.
-
-## Custom Agents (`.claude/agents/`)
-
-This project has 4 specialized subagents. Use them by name when delegating tasks:
-- **tf-writer** — generates Terraform code (has Write access + project memory)
-- **security-auditor** — audits TF for security issues (Read-only, Sonnet)
-- **cost-optimizer** — reviews infra cost (Read-only, Haiku)
-- **drift-detector** — detects state drift (Bash, Haiku)
-
-## Skills (`.claude/skills/`)
-
-All infrastructure and deployment tasks are handled via skills. Do not write Terraform or CI/CD code manually — use the appropriate skill. Action skills have `disable-model-invocation: true` (manual only). The `project-scope` skill has `user-invocable: false` (auto-loaded by Claude as background knowledge).
+## Project Structure
 
 ```
-/scaffold-terraform [region] [name]  → Generate all Terraform files (uses tf-writer agent)
-/scaffold-cicd [aws-account-id]      → Generate GitHub Actions + OIDC IAM role
-/tf-plan                             → Run terraform plan + risk analysis
-/tf-apply                            → Run terraform apply + verify
-/deploy                              → Sync S3 + invalidate CloudFront
-/infra-status                        → Health dashboard of all resources
-/infra-audit                         → Parallel security + cost + drift audit (forked context)
-/setup-gh-actions [create|validate]  → Create or validate CI workflow
-/tf-destroy                          → Safe destroy with confirmation
-project-scope                        → Background knowledge: AWS service constraints (auto-loaded)
-/commit                              → Auto-generate commit message (built-in)
-/compact                             → Compress long conversation context (built-in)
+├── index.html          (613 lines) — Main portfolio page (About, Services, Books, Courses, Contact)
+├── style.css           (1145 lines) — All styling; mobile-first responsive design
+├── privacy.html        (202 lines) — Privacy policy page
+├── terms.html          (217 lines) — Terms of service page
+└── images/             — Static assets (logo, profile photos, icons)
 ```
 
-## Commands
+## Key Technical Details
+
+### HTML/CSS Architecture
+- **Pure HTML5 + CSS3** — No JavaScript, no build tools, no dependencies
+- **Responsive design** — Desktop-first with breakpoints at 900px, 768px, 600px
+- **Mobile menu** — Hamburger toggle for smaller screens
+- **Icon library** — Font Awesome 6.5.0 loaded via CDN (https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css)
+- **Smooth scrolling** — CSS scroll-behavior enabled on all elements
+
+### Styling Structure (style.css)
+- Global reset at top (* selector)
+- Navbar styles (sticky positioning, responsive menu toggle)
+- Section-based styles (hero, about, services, courses, books, community, contact)
+- Footer with ownership proof placeholder
+- Media queries for responsive breakpoints
+
+## Important DMI Context
+
+### Ownership Proof (Mandatory)
+Students **must** add their deployment details to the footer before submission. The original footer:
+```html
+<p>Crafted with <span>cloud</span> excellence by Pravin Mishra</p>
+```
+
+Must be updated to include:
+```html
+<p><strong>Deployed by:</strong> [Student Name] | [Cohort] | [Week/Date]</p>
+```
+
+This proof must be **visually visible** in the browser when deployed — it's how DMI verifies assignment completion.
+
+### Deployment Target
+- **Host OS:** Ubuntu VM
+- **Web server:** Nginx
+- **Access:** Public IP of the VM
+- **Requirements:** Keep site live for 24 hours after deployment
+- **Proof method:** Browser screenshot showing the ownership footer
+
+## Development Commands
 
 ```bash
-# Terraform
-cd terraform && terraform init
-cd terraform && terraform plan
-cd terraform && terraform apply
-
-# Local preview
+# Local preview (open in browser directly)
 open index.html
 
-# Manual S3 sync (CI does this automatically)
-aws s3 sync . s3://$BUCKET_NAME --exclude "terraform/*" --exclude ".git/*" --exclude ".github/*" --exclude "*.md" --exclude ".claude/*"
+# Nginx local testing (if installing Nginx locally)
+sudo nginx -c $(pwd)/nginx.conf
+# or serve with Python (quick local server)
+python3 -m http.server 8000
 ```
 
-## Safety Layers
-1. **UserPromptSubmit hook** — catches destructive intent ("delete all", "nuke", "wipe") before Claude starts
-2. **PreToolUse hook** — blocks dangerous commands (terraform destroy, aws s3 rm) at execution time
-3. **Permissions** — auto-allows safe reads, blocks IAM and rm -rf
-4. **PostToolUse hook** — logs all terraform apply executions to `.claude/deploy.log`
+## When Making Changes
 
-## Conventions
-- Terraform files use `terraform/` directory with standard layout (main.tf, variables.tf, outputs.tf)
-- GitHub Actions uses OIDC — no stored AWS access keys
-- All infrastructure changes go through Terraform — never modify AWS resources manually
-- Site content changes deploy automatically via GitHub Actions on push to main
+- **Content updates:** Edit index.html directly
+- **Styling updates:** Modify style.css (keep responsive breakpoints intact)
+- **New pages:** Add as separate .html file (e.g., portfolio.html)
+- **Images:** Place in images/ directory and update image paths in HTML
+- **Footer customization:** Students must edit the footer in index.html with their own details before deployment
+
+## Deployment Checklist (for DMI students or instructors)
+
+1. ✅ Footer contains deployment owner's name and date
+2. ✅ All links work (external links open in new tab with `target="_blank"`)
+3. ✅ Images load correctly from images/ directory
+4. ✅ Responsive design works on mobile (test hamburger menu)
+5. ✅ Site accessible via public IP when hosted on Nginx
+6. ✅ Screenshot proof with footer visible for submission
+
+## Files That Should Not Be Modified
+
+- `privacy.html` and `terms.html` are standalone pages — avoid breaking their inline styling
+- Keep images/ directory structure intact for image paths to work
+- Font Awesome CDN link should remain unchanged (external dependency)
+
+## No Build Step Required
+
+This project requires **no compilation, bundling, or build process**. Simply serve the files as-is with Nginx or any static file server. This simplicity is intentional—it's designed for beginners learning DevOps fundamentals, not frontend complexity.
