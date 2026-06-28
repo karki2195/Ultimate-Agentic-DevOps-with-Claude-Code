@@ -28,6 +28,10 @@ jobs:
           aws s3 sync . s3://gauravkarkidmi-website-072988571347 \
             --delete \
             --exclude "*" \
+            --exclude ".git/*" \
+            --exclude ".claude/*" \
+            --exclude "terraform/*" \
+            --exclude ".github/*" \
             --include "*.html" \
             --include "*.css" \
             --include "images/*"
