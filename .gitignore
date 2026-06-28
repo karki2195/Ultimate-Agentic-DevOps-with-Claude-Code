@@ -32,6 +32,7 @@ crash.*.log
 # Claude Code
 .claude/settings.local.json
 .claude/agent-memory/
+**/.claude/agent-memory/
 .claude/mcp.json
 
 # Environment & secrets
